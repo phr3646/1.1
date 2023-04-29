@@ -3,7 +3,6 @@ import requests
 import time
 import pyperclip
 
-latest_video_time = {}
 class TikTokMonitor:
     def __init__(self):
         self.usernames = []
@@ -72,34 +71,20 @@ class TikTokMonitor:
                 self.status_text.insert(tk.END, f"{username}已更新：https://www.tiktok.com/@{username}/video/{video_id}\n")
                 pyperclip.copy(f"https://www.tiktok.com/@{username}/video/{video_id}")
                 update_status[username] = True
-                import requests
-                import json
-                import time
+            elif time.time() - self.last_update_times[username] <= 180:
+                self.status_text.insert(tk.END, f"{username}最新视频：{self.last_video_urls[username]}\n")
+                update_status[username] = False
+            else:
+                self.status_text.insert(tk.END, f"{username}最近3分钟内未更新视频\n")
+                update_status[username] = False
 
-                latest_video_time = {}
+        if self.start_time:
+            elapsed_time = time.time() - self.start_time
+            hours, remainder = divmod(elapsed_time, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            self.time_label.config(text=f"已监测：{int(hours)}小时{int(minutes)}分钟{int(seconds)}秒")
 
-                def get_latest_video(user_id):
-                    url = f'https://www.tiktok.com/node/share/user/@{user_id}'
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
-                    response = requests.get(url, headers=headers)
-                    html = response.text
-                    json_data = json.loads(html)
-                    video_list = json_data['userInfo']['itemList']
-                    for video in video_list:
-                        video_time = video['createTime']
-                        video_url = video['video']['urls'][0]
-                        if user_id in latest_video_time:
-                            if time.time() - latest_video_time[user_id] < 180:
-                                # 最新视频发布时间在3分钟内，返回链接并更新最新视频发布时间
-                                latest_video_time[user_id] = time.time()
-                                return video_url
-                        else:
-                            # 第一次检测到该用户视频，记录最新视频发布时间
-                            latest_video_time[user_id] = time.time()
-                    return None
-
-
+        self.root.after(30000, self.check_update)
 
 if __name__ == "__main__":
     monitor = TikTokMonitor()
